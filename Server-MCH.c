@@ -17,12 +17,14 @@
 
 int main(int argc , char *argv[]) {
     int opt = TRUE;
-    int master_socket , addrlen , new_socket , client_socket[30] ,
+    int master_socket , addrlen , new_socket , client_socket[5] ,
           max_clients = 3 , activity, i , valread , sd;
     int max_sd;
     int end = 0;
     int Nbrplayer;
     int time = 0;
+    int tralala = 0;
+    int firstGot = 0;
 
 
     struct sockaddr_in address;
@@ -43,6 +45,9 @@ int main(int argc , char *argv[]) {
 
     char beginAll[] = "Let's begin the game\n";
 
+    char firstLetter[] = "#a\n";
+
+    char nextGot[] = "Next player got keyword\n";
 
     if(TRUE) {
 
@@ -211,20 +216,38 @@ int main(int argc , char *argv[]) {
  }
 
 //Choose first letter and send it to the first player
-  char firstLetter[] = "a\n";
   for(i = 0; i < max_sd; i++) {
-   if(client_socket[i] > 0) {
-     if(send(client_socket[i], firstLetter, strlen(firstLetter), 0) < 0)
-     {
-        perror("send");
-     } else {
+    if(firstGot) {
+      if(client_socket[i] > 0) {
+         if(send(client_socket[i], nextGot, strlen(nextGot), 0) < 0) {
+            perror("send");
+         } else {
+           printf("Next player know that first player  id: %d\n" , i);
+         }
+      }
+    } else {
+      if(client_socket[i] > 0) {
+        if(send(client_socket[i], firstLetter, strlen(firstLetter), 0) < 0)
+        {
+           perror("send");
+        } else {
 
-       printf("Send to %d\n" , i);
-     }
-     break;
-   }
+          printf("Send to %d\n" , i);
+        }
+        firstGot = 1;
+      }
+    }
   }
 
+  // while (TRUE) {
+  //   bzero(buffer,BUFFSIZE);
+  //   if(read(client_socket[0], buffer, BUFFSIZE-1) < 0) {
+  //     perror("ERROR read");
+  //   }
+  //   else {
+  //     break;
+  //   }
+  // }
 
 //Quiting all clients
   for(i = 0; i < max_sd; i++) {

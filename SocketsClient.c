@@ -26,9 +26,12 @@
      struct sockaddr_in serv_addr;
      struct hostent *server;
      char buffer[BUFFSIZE];
+     char letter[] = "0";
+     char newWord[] = "#";
 
      char stop[] = "Stop\n";
 
+     if(TRUE) {
      if (argc < 3) {
         fprintf(stderr,"usage %s hostname port\n", argv[0]);
         exit(0);
@@ -55,6 +58,7 @@
 
     if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
          error("ERROR connecting");
+    }
 
     while (TRUE) {
       bzero(buffer, BUFFSIZE);
@@ -66,6 +70,14 @@
 
       if(strncmp(stop, buffer, sizeof(stop)) == 0) {
         break;
+      }
+      if(buffer[0] == newWord[0]) {
+        letter[0] = buffer[1];
+        printf("You have to think of a word starting on the first letter of this word: %s\n", letter);
+        // printf("Please give a word:\n");
+        // bzero(buffer, BUFFSIZE);
+        // scanf("%s\n", buffer);
+        // send(sockfd, buffer, BUFFSIZE, 0);
       }
     }
 
