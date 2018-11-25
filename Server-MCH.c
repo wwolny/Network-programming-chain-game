@@ -24,7 +24,7 @@ int main(int argc , char *argv[]) {
     int Nbrplayer;
     int time = 0;
     int tralala = 0;
-    int firstGot = 0;
+    int myFlag = 0;
 
 
     struct sockaddr_in address;
@@ -35,6 +35,7 @@ int main(int argc , char *argv[]) {
 
     //set of socket descriptors
     fd_set readfds;
+    fd_set writefds;
 
     //a message
     char message[] = "Welcome to the word chain game ! \n ";
@@ -217,7 +218,7 @@ int main(int argc , char *argv[]) {
 
 //Choose first letter and send it to the first player
   for(i = 0; i < max_sd; i++) {
-    if(firstGot) {
+    if(myFlag) {
       if(client_socket[i] > 0) {
          if(send(client_socket[i], nextGot, strlen(nextGot), 0) < 0) {
             perror("send");
@@ -234,20 +235,50 @@ int main(int argc , char *argv[]) {
 
           printf("Send to %d\n" , i);
         }
-        firstGot = 1;
+        myFlag = 1;
       }
     }
   }
 
-  // while (TRUE) {
-  //   bzero(buffer,BUFFSIZE);
-  //   if(read(client_socket[0], buffer, BUFFSIZE-1) < 0) {
-  //     perror("ERROR read");
-  //   }
-  //   else {
-  //     break;
-  //   }
-  // }
+  myFlag = 1;
+  while (myFlag) {
+    //clear the socket set
+    FD_ZERO(&readfds);
+
+    //add master socket to set
+    FD_SET(master_socket, &readfds);
+    max_sd = master_socket;
+
+    //add child sockets to set
+    for ( i = 0 ; i < max_clients ; i++) {
+        //socket descriptor
+        sd = client_socket[i];
+
+        //if valid socket descriptor then add to read list
+        if(sd > 0)
+            FD_SET( sd , &readfds);
+
+        //highest file descriptor number, need it for the select function
+        if(sd > max_sd)
+            max_sd = sd;
+    }
+    //Reading
+    for (i = 0; i < max_clients; i++) {
+        sd = client_socket[i];
+        bzero(buffer,BUFFSIZE);
+
+        if (FD_ISSET(sd, &readfds)) {
+            //read the incoming message
+            read(sd , buffer, BUFFSIZE-1);
+            printf("%s\n", buffer);
+            myFlag = 0;
+            break;
+        }
+    }
+  }
+
+
+
 
 //Quiting all clients
   for(i = 0; i < max_sd; i++) {
