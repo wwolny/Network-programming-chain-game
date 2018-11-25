@@ -75,6 +75,7 @@
         printf("Please give a word:\n");
         bzero(buffer, BUFFSIZE);
         scanf("%s", buffer);
+	send(sockfd, buffer, BUFFSIZE-1, 0);
       }
     }
 
