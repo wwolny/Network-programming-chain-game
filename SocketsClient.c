@@ -9,7 +9,6 @@
    #include <unistd.h>   //close
    #include <arpa/inet.h>
    #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
-   //#include <windows.h>
 
    #define TRUE   1
    #define FALSE  0
