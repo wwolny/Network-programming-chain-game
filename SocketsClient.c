@@ -14,16 +14,19 @@
    #define FALSE  0
    #define BUFFSIZE 1024
 
-   void error(char *msg)
-   {
-       perror(msg);
-       exit(0);
+   void error(char *msg) {
+      perror(msg);
+      exit(0);
+   }
+
+   void exitSmoothly(struct sockaddr_in *serv_addr) {
+      free (serv_addr);
    }
 
    int main(int argc, char *argv[])
    {
-     int sockfd, newsockfd, portno, n, i;
-     struct sockaddr_in serv_addr;
+     int sockfd = 0, newsockfd = 0, portno = 0, n = 0, i = 0;
+     struct sockaddr_in serv_addr; //= (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
      struct hostent *server;
      char buffer[BUFFSIZE];
      char newWord[] = "#";
@@ -33,6 +36,7 @@
      if(TRUE) {
      if (argc < 3) {
         fprintf(stderr,"usage %s hostname port\n", argv[0]);
+        //exitSmoothly(serv_addr);
         exit(0);
      }
      portno = atoi(argv[2]);
@@ -40,13 +44,15 @@
 
      sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-     if (sockfd < 0)
-         error("ERROR opening socket");
-
+     if (sockfd < 0) {
+       //exitSmoothly(serv_addr);
+       error("ERROR opening socket");
+    }
 
      if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
-         exit(0);
+        //exitSmoothly(serv_addr);
+        exit(0);
      }
 
      bzero((char *) &serv_addr, sizeof(serv_addr));
@@ -56,13 +62,15 @@
 
 
     if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
-         error("ERROR connecting");
+        //exitSmoothly(serv_addr);
+        error("ERROR connecting");
     }
 
     while (TRUE) {
       bzero(buffer, BUFFSIZE);
 
-      if(read(sockfd, buffer, BUFFSIZE-1) < 0) {
+      if(read(sockfd, buffer, BUFFSIZE-1) < 0)  {
+        //exitSmoothly(serv_addr);
         error("ERROR read");
       }
       printf("%s", buffer);
@@ -75,9 +83,9 @@
         printf("Please give a word:\n");
         bzero(buffer, BUFFSIZE);
         scanf("%s", buffer);
-	send(sockfd, buffer, BUFFSIZE-1, 0);
+	      send(sockfd, buffer, BUFFSIZE-1, 0);
       }
     }
-
-     return 0;
+    //exitSmoothly(serv_addr);
+    return 0;
    }
