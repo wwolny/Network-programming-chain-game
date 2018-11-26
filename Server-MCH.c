@@ -17,9 +17,8 @@
 
 //frees all the memory allocated during life of the programme
 //if any new dynamic allocation done, add its freeing here
-int exitSmoothly(fd_set *readfds, fd_set *writefds, struct timeval *t, struct sockaddr_in *address) {
+int exitSmoothly(fd_set *readfds, struct timeval *t, struct sockaddr_in *address) {
   free(readfds);
-  free(writefds);
   free(address);
   free(t);
 }
@@ -34,6 +33,7 @@ int checkWord(char *prvWord, char *nxtWord) {
   }
 }
 
+//TODO: change the array of int of clients to this struct
 struct player {
   int socketfd;
   short playing;
@@ -44,9 +44,9 @@ int main(int argc , char *argv[]) {
     int master_socket = 0, addrlen = 0, new_socket = 0, client_socket[5],
           max_clients = 5, activity = 0, i = 0, valread = 0, sd = 0;
     int max_sd = 0;
-    int Nbrplayer = 0;
-    int curPlayer = 0;
-    int myFlag = 0;
+    int Nbrplayer = 0;//number of players
+    int curPlayer = 0;//number of current playing player
+    int myFlag = 0; //Multiple use flag
 
 
     struct sockaddr_in *address = (struct sockaddr_in*)malloc(sizeof(struct sockaddr_in));
@@ -54,15 +54,15 @@ int main(int argc , char *argv[]) {
 
     char buffer[BUFFSIZE];  //data buffer of 1K
 
-    char curWord[BUFFSIZE];
+    char curWord[BUFFSIZE];//Buffer for current word
 
     //set of socket descriptors
     fd_set *readfds = NULL;
     readfds = (fd_set*)malloc(sizeof(fd_set));
-    fd_set *writefds = NULL;
-    writefds = (fd_set*)malloc(sizeof(fd_set));
 
-    //a message
+    //Set of messages to control the flow of the programme
+    //If You want to add new message implement it like this:
+    //char newword[] = "text\n";
     char message[] = "Welcome to the word chain game ! \n ";
 
     char newClient[] = "New player joined the game \n";
@@ -75,7 +75,11 @@ int main(int argc , char *argv[]) {
 
     char nextGot[] = "Next player got keyword\n";
 
-
+    //If You have a program to minimilize some part of code
+    //You can wrap it here
+    //it will be easier to move between the main function
+    //Inside is all network tools like setting the connection
+    //TODO:Put as much as possible to external functions
     if(1) {
 
     //initialise all client_socket[] to 0 so not checked
@@ -91,7 +95,7 @@ int main(int argc , char *argv[]) {
     //create a master socket
     if( (master_socket = socket(AF_INET , SOCK_STREAM , 0)) == 0) {
         perror("socket failed");
-        exitSmoothly(readfds, writefds, t, address);
+        exitSmoothly(readfds, t, address);
         exit(EXIT_FAILURE);
     }
 
@@ -100,7 +104,7 @@ int main(int argc , char *argv[]) {
     if( setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt,
           sizeof(opt)) < 0 ) {
         perror("setsockopt");
-        exitSmoothly(readfds, writefds, t, address);
+        exitSmoothly(readfds, t, address);
         exit(EXIT_FAILURE);
     }
 
@@ -112,7 +116,7 @@ int main(int argc , char *argv[]) {
     //bind the socket to localhost port 3000
     if (bind(master_socket, (struct sockaddr*)address, sizeof(*address)) < 0) {
         perror("bind failed");
-        exitSmoothly(readfds, writefds, t, address);
+        exitSmoothly(readfds, t, address);
         exit(EXIT_FAILURE);
     }
     printf("Listener on port %d \n", PORT);
@@ -120,7 +124,7 @@ int main(int argc , char *argv[]) {
     //try to specify maximum of 3 pending connections for the master socket
     if (listen(master_socket, 3) < 0) {
         perror("listen");
-        exitSmoothly(readfds, writefds, t, address);
+        exitSmoothly(readfds, t, address);
         exit(EXIT_FAILURE);
     }
 
@@ -129,6 +133,7 @@ int main(int argc , char *argv[]) {
     puts("Waiting for connections ...");
     }
 
+  //Program waits until every player join the game
    while(Nbrplayer < max_clients) {
        	 //clear the socket set
        	 FD_ZERO(readfds);
@@ -165,7 +170,7 @@ int main(int argc , char *argv[]) {
             if ((new_socket = accept(master_socket,
                     (struct sockaddr *)address, (socklen_t*)&addrlen))<0) {
                 perror("accept");
-                exitSmoothly(readfds, writefds, t, address);
+                exitSmoothly(readfds, t, address);
                 exit(EXIT_FAILURE);
             }
 
@@ -181,31 +186,25 @@ int main(int argc , char *argv[]) {
             puts("Welcome message sent successfully");
 
             //add new socket to array of sockets
-            for (i = 0; i < max_clients; i++)
-            {
+            for (i = 0; i < max_clients; i++) {
                 //if position is empty
-                if( client_socket[i] == 0 )
-                {
+                if( client_socket[i] == 0 ) {
                     client_socket[i] = new_socket;
                     printf("Adding to list of sockets as %d\n" , i);
                     break;
                 }
                 send(client_socket[i], newClient, strlen(newClient), 0);
             }
-
         }
 
         //else its some IO operation on some other socket
-        for (i = 0; i < max_clients; i++)
-        {
+        for (i = 0; i < max_clients; i++) {
             sd = client_socket[i];
 
-            if (FD_ISSET(sd, readfds))
-            {
+            if (FD_ISSET(sd, readfds)) {
                 //Check if it was for closing , and also read the
                 //incoming message
-                if ((valread = read( sd , buffer, BUFFSIZE-1)) == 0)
-                {
+                if ((valread = read( sd , buffer, BUFFSIZE-1)) == 0) {
                     //Somebody disconnected , get his details and print
                     getpeername(sd , (struct sockaddr*)address ,(socklen_t*)&addrlen);
                     printf("Host disconnected , ip %s , port %d \n" ,
@@ -217,8 +216,7 @@ int main(int argc , char *argv[]) {
                 }
 
                 //Echo back the message that came in
-                else
-                {
+                else {
                     //set the string terminating NULL byte on the end
                     //of the data read
                     buffer[valread] = '\0';
@@ -228,7 +226,7 @@ int main(int argc , char *argv[]) {
          }
 	}
 
-//Information about begining of the game
+//Information about begining of the game send to every player
  for(i = 0; i < max_sd; i++) {
    if(client_socket[i] > 0) {
      if(send(client_socket[i], beginAll, strlen(beginAll), 0) < 0) {
@@ -240,6 +238,7 @@ int main(int argc , char *argv[]) {
  }
 
 //Choose first letter and send it to the first player
+//TODO:add rand()%26 to the firstLetter[1]
   for(i = 0; i < max_sd; i++) {
     if(myFlag) {
       if(client_socket[i] > 0) {
@@ -260,51 +259,31 @@ int main(int argc , char *argv[]) {
       }
     }
   }
+
 //First listning for first word
   myFlag = 1;
+  curPlayer = 0;
   while (myFlag) {
-    //clear the socket set
     FD_ZERO(readfds);
-
-    //add master socket to set
     FD_SET(master_socket, readfds);
-    max_sd = master_socket;
-
-    //add child sockets to set
-    for ( i = 0 ; i < max_clients ; i++) {
-        //socket descriptor
-        sd = client_socket[i];
-
-        //if valid socket descriptor then add to read list
-        if(sd > 0)
-            FD_SET(sd, readfds);
-
-        //highest file descriptor number, need it for the select function
-        if(sd > max_sd)
-            max_sd = sd;
-    }
-    //Reading
-    for (i = 0; i < max_clients; i++) {
-        sd = client_socket[i];
-        bzero(buffer,BUFFSIZE);
-
-        if (FD_ISSET(sd, readfds)) {
-            //read the incoming message
-            read(sd , buffer, BUFFSIZE-1);
-            printf("%s\n", buffer);
-            bzero(curWord, BUFFSIZE-1);
-            strcpy(curWord, "#");
-            strcat(curWord, buffer);
-            printf("%s\n", curWord);
-            myFlag = 0;
-            break;
-        }
-    }
+    sd = client_socket[curPlayer];
+    if(sd > 0)
+       FD_SET(sd, readfds);
+    bzero(buffer,BUFFSIZE);
+    if (FD_ISSET(sd, readfds)) {
+      read(sd , buffer, BUFFSIZE-1);
+      bzero(curWord, BUFFSIZE-1);
+      strcpy(curWord, "#");
+      strcat(curWord, buffer);
+      printf("%s\n", curWord);
+      myFlag = 0;
   }
   curPlayer= (curPlayer+1)%max_clients;
 
   //Game loop
   while(1) {
+      //Sending a message that next player is making word
+      //Sending to playing message with the word
       for(i = 0; i < max_sd; i++) {
         if(i != curPlayer) {
           if(client_socket[i] > 0) {
@@ -325,6 +304,7 @@ int main(int argc , char *argv[]) {
         }
       }
 
+      //Wait until the player will send the respond with word
       myFlag = 1;
       while (myFlag) {
         FD_ZERO(readfds);
@@ -339,9 +319,7 @@ int main(int argc , char *argv[]) {
           strcpy(curWord, "#");
           strcat(curWord, buffer);
           printf("%s\n", curWord);
-
           myFlag = 0;
-          break;
         }
       }
       curPlayer= (curPlayer+1)%max_clients;
@@ -349,17 +327,14 @@ int main(int argc , char *argv[]) {
 
 //Quiting all clients
   for(i = 0; i < max_sd; i++) {
-    if(client_socket[i] > 0)
-    {
-      if(send(client_socket[i], stop, strlen(stop), 0) < 0)
-      {
+    if(client_socket[i] > 0) {
+      if(send(client_socket[i], stop, strlen(stop), 0) < 0) {
           perror("send");
       }
-
       printf("Send to %d\n" , i);
     }
   }
 
-  exitSmoothly(readfds, writefds, t, address);
+  exitSmoothly(readfds, t, address);
   return 0;
 }
