@@ -37,7 +37,7 @@ int checkWord(char *prvWord, char *nxtWord) {
 struct player {
   int socketfd;
   short playing;
-}
+};
 
 int main(int argc , char *argv[]) {
     int opt = TRUE;
@@ -277,6 +277,7 @@ int main(int argc , char *argv[]) {
       strcat(curWord, buffer);
       printf("%s\n", curWord);
       myFlag = 0;
+    }
   }
   curPlayer= (curPlayer+1)%max_clients;
 
