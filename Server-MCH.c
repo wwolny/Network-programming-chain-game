@@ -21,14 +21,10 @@
 
 //frees all the memory allocated during life of the programme
 //if any new dynamic allocation done, add its freeing here
-int exitSmoothly(fd_set *readfds, struct timeval *t, struct sockaddr_in *address) {//, struct player **players, int lenPlayers) {
-  int i;
+int exitSmoothly(fd_set *readfds, struct timeval *t, struct sockaddr_in *address) {
   free(readfds);
   free(address);
   free(t);
-  // for(i = 0; i < lenPlayers; i++) {
-  //   free(players[i]);
-  // }
 }
 
 //If word given is correct, then return 1
@@ -305,6 +301,7 @@ int main(int argc , char *argv[]) {
           read(sd , buffer, BUFFSIZE-1);
           if(checkWord(buffer, curWord) < 0) {
             finishGame = TRUE;
+            break;
           }
           bzero(curWord, BUFFSIZE-1);
           strcpy(curWord, "#");
@@ -314,6 +311,10 @@ int main(int argc , char *argv[]) {
         }
       }
       curPlayer= (curPlayer+1)%MAX_CLIENTS;
+
+      if(finishGame) {
+        break;
+      }
 
       //Sending a message that next player is making word
       //Sending to playing message with the word
