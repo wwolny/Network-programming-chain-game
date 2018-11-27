@@ -30,6 +30,9 @@ int exitSmoothly(fd_set *readfds, struct timeval *t, struct sockaddr_in *address
 //If word given is correct, then return 1
 //If its wrong return -1
 int checkWord(char *prvWord, char *nxtWord) {
+  int len = strlen(prvWord);
+  printf("%d\n", len);
+  printf("%c\n", prvWord[strlen(prvWord)-1]);
   if(prvWord[strlen(prvWord)-1] == nxtWord[0]) {
     return 1;
   } else {
@@ -52,7 +55,7 @@ int main(int argc , char *argv[]) {
     int curPlayer = 0;//number of current playing player
     int myFlag = FALSE; //Multiple use flag
     int finishGame = FALSE;
-    int client_socket[MAX_CLIENTS];
+    //int client_socket[MAX_CLIENTS];
     struct player *client_socket1[MAX_CLIENTS];
 
     for(i = 0; i < MAX_CLIENTS; i++) {
@@ -83,7 +86,7 @@ int main(int argc , char *argv[]) {
 
     char beginAll[] = "Let's begin the game\n";
 
-    char firstLetter[] = "#a\n";
+    char firstLetter[] = "#a";
 
     char nextGot[] = "Next player got keyword\n";
 
@@ -95,9 +98,9 @@ int main(int argc , char *argv[]) {
     if(1) {
 
     //initialise all client_socket[] to 0 so not checked
-    for (i = 0; i < MAX_CLIENTS; i++) {
-        client_socket[i] = 0;
-    }
+    // for (i = 0; i < MAX_CLIENTS; i++) {
+    //     client_socket[i] = 0;
+    // }
 
     //Initialise Timer for select()
     t->tv_sec=TIMEOUT;
@@ -169,7 +172,8 @@ int main(int argc , char *argv[]) {
         //add child sockets to set
         for ( i = 0 ; i < MAX_CLIENTS ; i++) {
             //socket descriptor
-            sd = client_socket[i];
+            //sd = client_socket[i];
+            sd = client_socket1[i]->socketfd;
             //if valid socket descriptor then add to read list
             if(sd > 0)
                 FD_SET(sd, readfds);
@@ -214,19 +218,23 @@ int main(int argc , char *argv[]) {
             //add new socket to array of sockets
             for (i = 0; i < MAX_CLIENTS; i++) {
                 //if position is empty
-                if( client_socket[i] == 0 ) {
-                    client_socket[i] = new_socket;
+                //if( client_socket[i] == 0 ) {
+                if(client_socket1[i]->socketfd == 0 ) {
+
+                    //client_socket[i] = new_socket;
+                    client_socket1[i]->socketfd = new_socket;
                     printf("Adding to list of sockets as %d\n" , i);
                     break;
                 }
-                send(client_socket[i], newClient, strlen(newClient), 0);
+                //send(client_socket[i], newClient, strlen(newClient), 0);
+                send(client_socket1[i]->socketfd, newClient, strlen(newClient), 0);
             }
         }
 
         //else its some IO operation on some other socket
         for (i = 0; i < MAX_CLIENTS; i++) {
-            sd = client_socket[i];
-
+            //sd = client_socket[i];
+            sd = client_socket1[i]->socketfd;
             if (FD_ISSET(sd, readfds)) {
                 //Check if it was for closing , and also read the
                 //incoming message
@@ -238,7 +246,8 @@ int main(int argc , char *argv[]) {
 
                     //Close the socket and mark as 0 in list for reuse
                     close( sd );
-                    client_socket[i] = 0;
+                    //client_socket[i] = 0;
+                    client_socket1[i]->socketfd = 0;
                 }
 
                 //Echo back the message that came in
@@ -254,8 +263,8 @@ int main(int argc , char *argv[]) {
 
 //Information about begining of the game send to every player
  for(i = 0; i < MAX_CLIENTS; i++) {
-   if(client_socket[i] > 0) {
-     if(send(client_socket[i], beginAll, strlen(beginAll), 0) < 0) {
+   if(client_socket1[i]->socketfd > 0) {
+     if(send(client_socket1[i]->socketfd, beginAll, strlen(beginAll), 0) < 0) {
         perror("send");
      } else {
        printf("Send to %d\n" , i);
@@ -267,16 +276,16 @@ int main(int argc , char *argv[]) {
 //TODO:add rand()%26 to the firstLetter[1]
   for(i = 0; i < MAX_CLIENTS; i++) {
     if(myFlag) {
-      if(client_socket[i] > 0) {
-         if(send(client_socket[i], nextGot, strlen(nextGot), 0) < 0) {
+      if(client_socket1[i]->socketfd > 0) {
+         if(send(client_socket1[i]->socketfd, nextGot, strlen(nextGot), 0) < 0) {
             perror("send");
          } else {
            printf("Next player know that first player  id: %d\n" , i);
          }
       }
     } else {
-      if(client_socket[i] > 0) {
-        if(send(client_socket[i], firstLetter, strlen(firstLetter), 0) < 0) {
+      if(client_socket1[i]->socketfd > 0) {
+        if(send(client_socket1[i]->socketfd, firstLetter, strlen(firstLetter), 0) < 0) {
            perror("send");
         } else {
           printf("Send to %d\n" , i);
@@ -286,6 +295,7 @@ int main(int argc , char *argv[]) {
     }
   }
 
+  strcpy(curWord, firstLetter);
   //Game loop
   while(1) {
       //Wait until the player will send the respond with word
@@ -293,14 +303,17 @@ int main(int argc , char *argv[]) {
       while (myFlag) {
         FD_ZERO(readfds);
         FD_SET(master_socket, readfds);
-        sd = client_socket[curPlayer];
+        sd = client_socket1[curPlayer]->socketfd;
         if(sd > 0)
            FD_SET(sd, readfds);
         bzero(buffer,BUFFSIZE);
         if (FD_ISSET(sd, readfds)) {
           read(sd , buffer, BUFFSIZE-1);
-          if(checkWord(buffer, curWord) < 0) {
+          printf("%s\n", buffer);
+          printf("%s\n", curWord);
+          if(checkWord(curWord, buffer) < 0) {
             finishGame = TRUE;
+            printf("Check Success\n");
             break;
           }
           bzero(curWord, BUFFSIZE-1);
@@ -320,16 +333,16 @@ int main(int argc , char *argv[]) {
       //Sending to playing message with the word
       for(i = 0; i < MAX_CLIENTS; i++) {
         if(i != curPlayer) {
-          if(client_socket[i] > 0) {
-             if(send(client_socket[i], nextGot, strlen(nextGot), 0) < 0) {
+          if(client_socket1[i]->socketfd > 0) {
+             if(send(client_socket1[i]->socketfd, nextGot, strlen(nextGot), 0) < 0) {
                 perror("send");
              } else {
                printf("Next player know that first player  id: %d\n" , i);
              }
           }
         } else {
-          if(client_socket[i] > 0) {
-            if(send(client_socket[i], curWord, strlen(curWord), 0) < 0) {
+          if(client_socket1[i]->socketfd > 0) {
+            if(send(client_socket1[i]->socketfd, curWord, strlen(curWord), 0) < 0) {
                perror("send");
             } else {
               printf("Send to %d\n" , i);
@@ -341,8 +354,8 @@ int main(int argc , char *argv[]) {
 
 //Quiting all clients
   for(i = 0; i < MAX_CLIENTS; i++) {
-    if(client_socket[i] > 0) {
-      if(send(client_socket[i], stop, strlen(stop), 0) < 0) {
+    if(client_socket1[i]->socketfd > 0) {
+      if(send(client_socket1[i]->socketfd, stop, strlen(stop), 0) < 0) {
           perror("send");
       }
       printf("Send to %d\n" , i);
