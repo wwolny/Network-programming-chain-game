@@ -87,13 +87,16 @@
         break;
       }
       //If the first char is the keysign
-      if(buffer[0] == newWord[0]) {
+       else if(buffer[0] == newWord[0]) {
         printf("You have to think of a word starting on the first letter of this word: %s\n", buffer);
         printf("Please give a word:\n");
         bzero(buffer, BUFFSIZE);
         scanf("%s", buffer);
 	      send(sockfd, buffer, BUFFSIZE-1, 0);
         printf("\n");
+      }
+      else {
+        printf("%s\n", buffer);
       }
     }
     return 0;
