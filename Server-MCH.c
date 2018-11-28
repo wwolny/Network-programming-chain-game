@@ -8,13 +8,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
+#include "vector.h"
 
 #define TRUE          1
 #define FALSE         0
 #define PORT          3000
 #define TIMEOUT       1
 #define BUFFSIZE      1024
-#define MAX_CLIENTS   2
+#define MAX_CLIENTS   3
 #define LIVING        1
 #define DEAD          -1
 
@@ -96,7 +97,11 @@ int main(int argc , char *argv[]) {
     int curPlayer = 0;//number of current playing player
     int myFlag = FALSE; //Multiple use flag
     int finishGame = FALSE;
-    int NbrWord = 0;
+    //int NbrWord = 0;
+
+    vector *vec = (vector*)malloc(sizeof(vector));
+    vector_init(vec);
+
     struct player *client_socket1[MAX_CLIENTS];
 
     for(i = 0; i < MAX_CLIENTS; i++) {
@@ -164,6 +169,8 @@ int main(int argc , char *argv[]) {
         for(i = 0; i < MAX_CLIENTS; i++) {
           free(client_socket1[i]);
         }
+        vector_free(vec);
+        free(vec);
         exit(EXIT_FAILURE);
     }
 
@@ -175,6 +182,8 @@ int main(int argc , char *argv[]) {
         for(i = 0; i < MAX_CLIENTS; i++) {
           free(client_socket1[i]);
         }
+        vector_free(vec);
+        free(vec);
         exit(EXIT_FAILURE);
     }
 
@@ -190,6 +199,8 @@ int main(int argc , char *argv[]) {
         for(i = 0; i < MAX_CLIENTS; i++) {
           free(client_socket1[i]);
         }
+        vector_free(vec);
+        free(vec);
         exit(EXIT_FAILURE);
     }
     printf("Listener on port %d \n", PORT);
@@ -201,12 +212,14 @@ int main(int argc , char *argv[]) {
         for(i = 0; i < MAX_CLIENTS; i++) {
           free(client_socket1[i]);
         }
+        vector_free(vec);
+        free(vec);
         exit(EXIT_FAILURE);
     }
 
     //accept the incoming connection
     addrlen = sizeof(address);
-    puts("Waiting for connections ...");
+      puts("Waiting for connections ...");
     }
 
   //Program waits until every player join the game
@@ -249,6 +262,8 @@ int main(int argc , char *argv[]) {
                 for(i = 0; i < MAX_CLIENTS; i++) {
                   free(client_socket1[i]);
                 }
+                vector_free(vec);
+                free(vec);
                 exit(EXIT_FAILURE);
             }
 
@@ -370,8 +385,7 @@ int main(int argc , char *argv[]) {
           break;
         }
         printf("Good answer for the player %d !\n\n", curPlayer);
-        saveToFile(buffer, NameFile);
-        NbrWord++;
+        //vector_add(vec, buffer);
         bzero(curWord, BUFFSIZE-1);
         strcpy(curWord, "#");
         strcat(curWord, buffer);
@@ -417,13 +431,14 @@ int main(int argc , char *argv[]) {
   //Word chain to send to the clients
   //Not Working yet
   // printf("%s\n",WordChain);
-  // for (i=0; i <= NbrWord; i++) {
-  //     bzero(buffer,BUFFSIZE-1);
-  //     ReadWord(NameFile,buffer,i);
-  //     printf("%s\n",buffer);
+  // printf("%d\n", vector_total(vec));
+  // for (i=0; i < vector_total(vec); i++) {
+  //     bzero(buffer, BUFFSIZE-1);
+  //     strcat(buffer, (char *)vector_get(vec, i));
+  //     printf("%s\n", buffer);
   //     printf(" ");
   // }
-  printf("\n\n");
+  // printf("\n\n");
 
 //Quiting all clients
   for(i = 0; i < MAX_CLIENTS; i++) {
@@ -436,6 +451,8 @@ int main(int argc , char *argv[]) {
   }
 
   exitSmoothly(readfds, t, address);
+  vector_free(vec);
+  free(vec);
   for(i = 0; i < MAX_CLIENTS; i++) {
     free(client_socket1[i]);
   }

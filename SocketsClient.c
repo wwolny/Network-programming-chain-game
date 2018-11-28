@@ -8,6 +8,7 @@
    #include <errno.h>
    #include <unistd.h>   //close
    #include <arpa/inet.h>
+   #include <time.h>
    #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
 
    #define TRUE   1
@@ -95,9 +96,10 @@
 	      send(sockfd, buffer, BUFFSIZE-1, 0);
         printf("\n");
       }
-      else {
+      else if(strlen(buffer) > 0) {
         printf("%s\n", buffer);
       }
+      bzero(buffer, BUFFSIZE);
     }
     return 0;
    }
