@@ -9,14 +9,15 @@
 #include <netinet/in.h>
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
 
-#define TRUE        1
-#define FALSE       0
-#define PORT        3000
-#define TIMEOUT     1
-#define BUFFSIZE    1024
-#define MAX_CLIENTS 3
-#define LIVING      1
-#define DEAD        -1
+#define TRUE          1
+#define FALSE         0
+#define PORT          3000
+#define TIMEOUT       1
+#define BUFFSIZE      1024
+#define MAX_CLIENTS   2
+#define LIVING        1
+#define DEAD          -1
+
 
 
 //frees all the memory allocated during life of the programme
@@ -30,15 +31,55 @@ int exitSmoothly(fd_set *readfds, struct timeval *t, struct sockaddr_in *address
 //If word given is correct, then return 1
 //If its wrong return -1
 int checkWord(char *prvWord, char *nxtWord) {
-  int len = strlen(prvWord);
-  printf("%d\n", len);
-  printf("%c\n", prvWord[strlen(prvWord)-1]);
   if(prvWord[strlen(prvWord)-1] == nxtWord[0]) {
     return 1;
   } else {
     return -1;
   }
 }
+
+//Save the world given in a file
+//If success return 1
+//Otherwise return -1
+int saveToFile(char *buffer, char* NameFile) {
+    FILE* f = NULL;
+    f = fopen(NameFile, "a");
+
+    if (f != NULL) {
+        fprintf(f,"%s\r\n",buffer);
+        fclose(f);
+        return 1;
+    } else {
+        printf("fail to open file\n");
+        return -1;
+        //exit(-1);
+    }
+}
+
+//Read word from the file
+//If success return 1
+//Otherwise return -1
+int ReadWord(char *Namefile,char *buffer, int lineNumber) {
+    FILE *f=NULL;
+    char s[255];
+    int i=0;
+
+    f = fopen(Namefile,"r");
+    if(f == NULL) {
+        printf("fail to open file\n");
+        return -1;
+        //exit(-1);
+    }
+
+    for (i = 0; i < lineNumber; i++) {
+        fgets(s, sizeof(s), f);
+        bzero(buffer,BUFFSIZE);
+        strcat(buffer,s);
+    }
+    fclose(f);
+    return 1;
+}
+
 
 //TODO: change the array of int of clients to this struct
 struct player {
@@ -55,7 +96,7 @@ int main(int argc , char *argv[]) {
     int curPlayer = 0;//number of current playing player
     int myFlag = FALSE; //Multiple use flag
     int finishGame = FALSE;
-    //int client_socket[MAX_CLIENTS];
+    int NbrWord = 0;
     struct player *client_socket1[MAX_CLIENTS];
 
     for(i = 0; i < MAX_CLIENTS; i++) {
@@ -94,11 +135,20 @@ int main(int argc , char *argv[]) {
 
     char winner[] = "You have won";
 
-    char infoWinner[] = " won!!!!!";
+    char WordChain[] = "\nHere there is the Word chain of the game :\n";
+
+    char NameFile[] = "File.txt";
+
+    // /set first letter
+    char c;
+    srand(time(NULL));
+    c = rand()%(26)+98;
+    firstLetter[1] = c;
+    printf("%s\n", firstLetter);
 
     //If You have a program to minimilize some part of code
     //You can wrap it here
-    //it will be easier to move between the main function
+    //it will be easier to move inside the main function
     //Inside is all network tools like setting the connection
     //TODO:Put as much as possible to external functions
     if(1) {
@@ -204,7 +254,7 @@ int main(int argc , char *argv[]) {
 
             //inform user of socket number - used in send and receive commands
             printf("New connection , socket fd is %d , ip is : %s , port : %d  \n" , new_socket , inet_ntoa(address->sin_addr) , ntohs (address->sin_port));
-           Nbrplayer++;
+            Nbrplayer++;
 
             //send new connection greeting message
             if( send(new_socket, message, strlen(message), 0) != strlen(message) ) {
@@ -239,7 +289,6 @@ int main(int argc , char *argv[]) {
 
                     //Close the socket and mark as 0 in list for reuse
                     close( sd );
-                    //client_socket[i] = 0;
                     client_socket1[i]->socketfd = 0;
                 }
 
@@ -254,6 +303,7 @@ int main(int argc , char *argv[]) {
          }
 	}
 
+  printf("\n\n");
 //Information about begining of the game send to every player
  for(i = 0; i < MAX_CLIENTS; i++) {
    if(client_socket1[i]->socketfd > 0) {
@@ -265,105 +315,85 @@ int main(int argc , char *argv[]) {
    }
  }
 
-//Choose first letter and send it to the first player
-//TODO:add rand()%26 to the firstLetter[1]
-  for(i = 0; i < MAX_CLIENTS; i++) {
-    if(myFlag) {
-      if(client_socket1[i]->socketfd > 0) {
-         if(send(client_socket1[i]->socketfd, nextGot, strlen(nextGot), 0) < 0) {
-            perror("send");
-         } else {
-           printf("Next player know that first player  id: %d\n" , i);
-         }
-      }
-    } else {
-      if(client_socket1[i]->socketfd > 0) {
-        if(send(client_socket1[i]->socketfd, firstLetter, strlen(firstLetter), 0) < 0) {
-           perror("send");
-        } else {
-          printf("Send to %d\n" , i);
-        }
-        myFlag = 1;
-      }
-    }
-  }
+ printf("\n\n");
 
   strcpy(curWord, firstLetter);
   //Game loop
-  while(1) {
-      //Wait until the player will send the respond with word
-      myFlag = 1;
-      while (myFlag && client_socket1[curPlayer]->playing == LIVING) {
-        FD_ZERO(readfds);
-        FD_SET(master_socket, readfds);
-        sd = client_socket1[curPlayer]->socketfd;
-        if(sd > 0)
-           FD_SET(sd, readfds);
-        bzero(buffer,BUFFSIZE);
-        if (FD_ISSET(sd, readfds)) {
-          read(sd , buffer, BUFFSIZE-1);
-          printf("%s\n", buffer);
-          printf("%s\n", curWord);
-          if(checkWord(curWord, buffer) < 0) {
-            Nbrplayer--;
-            client_socket1[curPlayer]->playing = DEAD;
-            if(Nbrplayer == 1) {
-              finishGame = TRUE;
-            }
-            if(send(client_socket1[curPlayer]->socketfd, mistake,
-              strlen(mistake), 0) < 0) {
-               perror("Error to send");
-            } else {
-              printf("Player %d made mistake\n" , curPlayer);
-            }
-            break;
-          }
-          bzero(curWord, BUFFSIZE-1);
-          strcpy(curWord, "#");
-          strcat(curWord, buffer);
-          printf("%s\n", curWord);
-          myFlag = 0;
+  while(!finishGame) {
+    //Sending a message that next player is making word
+    //Sending to playing message with the word
+    for(i = 0; i < MAX_CLIENTS; i++) {
+      if(i != curPlayer || client_socket1[curPlayer]->playing == DEAD) {
+        if(client_socket1[i]->socketfd > 0) {
+           if(send(client_socket1[i]->socketfd, nextGot, strlen(nextGot), 0) < 0) {
+              perror("send");
+           } else {
+             printf("Next player know that first player  id: %d\n" , i);
+           }
         }
-      }
-      curPlayer= (curPlayer+1)%MAX_CLIENTS;
-
-      if(finishGame) {
-        break;
-      }
-
-      //Sending a message that next player is making word
-      //Sending to playing message with the word
-      for(i = 0; i < MAX_CLIENTS; i++) {
-        if(i != curPlayer || client_socket1[curPlayer]->playing == DEAD) {
-          if(client_socket1[i]->socketfd > 0) {
-             if(send(client_socket1[i]->socketfd, nextGot, strlen(nextGot), 0) < 0) {
-                perror("send");
-             } else {
-               printf("Next player know that first player  id: %d\n" , i);
-             }
-          }
-        } else {
-          if(client_socket1[i]->socketfd > 0) {
-            if(send(client_socket1[i]->socketfd, curWord, strlen(curWord), 0) < 0) {
-               perror("send");
-            } else {
-              printf("Send to %d\n" , i);
-            }
+      } else {
+        if(client_socket1[i]->socketfd > 0) {
+          if(send(client_socket1[i]->socketfd, curWord, strlen(curWord), 0) < 0) {
+             perror("send");
+          } else {
+            printf("Send to %d\n" , i);
           }
         }
       }
+    }
+
+    printf("\n\n");
+
+    //Wait until the player will send the respond with word
+    myFlag = 1;
+    while (myFlag && client_socket1[curPlayer]->playing == LIVING) {
+      FD_ZERO(readfds);
+      FD_SET(master_socket, readfds);
+      sd = client_socket1[curPlayer]->socketfd;
+      if(sd > 0)
+         FD_SET(sd, readfds);
+      bzero(buffer,BUFFSIZE);
+      if (FD_ISSET(sd, readfds)) {
+        read(sd , buffer, BUFFSIZE-1);
+        if(checkWord(curWord, buffer) < 0) {
+          Nbrplayer--;
+          client_socket1[curPlayer]->playing = DEAD;
+          if(Nbrplayer == 1) {
+            finishGame = TRUE;
+          }
+          if(send(client_socket1[curPlayer]->socketfd, mistake,
+                  strlen(mistake), 0) < 0) {
+             perror("Error to send");
+          } else {
+            printf("Player %d made mistake\n" , curPlayer);
+          }
+          break;
+        }
+        printf("Good answer for the player %d !\n\n", curPlayer);
+        saveToFile(buffer, NameFile);
+        NbrWord++;
+        bzero(curWord, BUFFSIZE-1);
+        strcpy(curWord, "#");
+        strcat(curWord, buffer);
+        printf("%s\n", curWord);
+        myFlag = 0;
+      }
+    }
+    curPlayer= (curPlayer+1)%MAX_CLIENTS;
   }
 
+//Find the winner
   for (i = 0; i < MAX_CLIENTS; i++) {
     if(client_socket1[i]->playing == LIVING) {
       Nbrplayer = i;
       break;
     }
   }
+
 //Winner and printing the chain
 //Now NbrPlayer is the id of the winner
   bzero(curWord, BUFFSIZE-1);
-  sprintf(curWord, "Player %d won!!!\n", Nbrplayer);
+  sprintf(curWord, "\nPlayer %d won!!!\n", Nbrplayer);
   for (i = 0; i < MAX_CLIENTS; i++) {
     if(i == Nbrplayer) {
       if(client_socket1[i]->socketfd > 0) {
@@ -384,6 +414,16 @@ int main(int argc , char *argv[]) {
     }
   }
 
+  //Word chain to send to the clients
+  //Not Working yet
+  // printf("%s\n",WordChain);
+  // for (i=0; i <= NbrWord; i++) {
+  //     bzero(buffer,BUFFSIZE-1);
+  //     ReadWord(NameFile,buffer,i);
+  //     printf("%s\n",buffer);
+  //     printf(" ");
+  // }
+  printf("\n\n");
 
 //Quiting all clients
   for(i = 0; i < MAX_CLIENTS; i++) {
