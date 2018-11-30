@@ -8,7 +8,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/time.h> //FD_SET, FD_ISSET, FD_ZERO macros
-#include "vector.h"
 
 #define TRUE          1
 #define FALSE         0
@@ -39,49 +38,6 @@ int checkWord(char *prvWord, char *nxtWord) {
   }
 }
 
-//Save the world given in a file
-//If success return 1
-//Otherwise return -1
-int saveToFile(char *buffer, char* NameFile) {
-    FILE* f = NULL;
-    f = fopen(NameFile, "a");
-
-    if (f != NULL) {
-        fprintf(f,"%s\r\n",buffer);
-        fclose(f);
-        return 1;
-    } else {
-        printf("fail to open file\n");
-        return -1;
-        //exit(-1);
-    }
-}
-
-//Read word from the file
-//If success return 1
-//Otherwise return -1
-int ReadWord(char *Namefile,char *buffer, int lineNumber) {
-    FILE *f=NULL;
-    char s[255];
-    int i=0;
-
-    f = fopen(Namefile,"r");
-    if(f == NULL) {
-        printf("fail to open file\n");
-        return -1;
-        //exit(-1);
-    }
-
-    for (i = 0; i < lineNumber; i++) {
-        fgets(s, sizeof(s), f);
-        bzero(buffer,BUFFSIZE);
-        strcat(buffer,s);
-    }
-    fclose(f);
-    return 1;
-}
-
-
 //TODO: change the array of int of clients to this struct
 struct player {
   int socketfd;
@@ -97,10 +53,6 @@ int main(int argc , char *argv[]) {
     int curPlayer = 0;//number of current playing player
     int myFlag = FALSE; //Multiple use flag
     int finishGame = FALSE;
-    //int NbrWord = 0;
-
-    vector *vec = (vector*)malloc(sizeof(vector));
-    vector_init(vec);
 
     struct player *client_socket1[MAX_CLIENTS];
 
@@ -169,8 +121,6 @@ int main(int argc , char *argv[]) {
         for(i = 0; i < MAX_CLIENTS; i++) {
           free(client_socket1[i]);
         }
-        vector_free(vec);
-        free(vec);
         exit(EXIT_FAILURE);
     }
 
@@ -182,8 +132,6 @@ int main(int argc , char *argv[]) {
         for(i = 0; i < MAX_CLIENTS; i++) {
           free(client_socket1[i]);
         }
-        vector_free(vec);
-        free(vec);
         exit(EXIT_FAILURE);
     }
 
@@ -199,8 +147,6 @@ int main(int argc , char *argv[]) {
         for(i = 0; i < MAX_CLIENTS; i++) {
           free(client_socket1[i]);
         }
-        vector_free(vec);
-        free(vec);
         exit(EXIT_FAILURE);
     }
     printf("Listener on port %d \n", PORT);
@@ -212,8 +158,6 @@ int main(int argc , char *argv[]) {
         for(i = 0; i < MAX_CLIENTS; i++) {
           free(client_socket1[i]);
         }
-        vector_free(vec);
-        free(vec);
         exit(EXIT_FAILURE);
     }
 
@@ -262,8 +206,6 @@ int main(int argc , char *argv[]) {
                 for(i = 0; i < MAX_CLIENTS; i++) {
                   free(client_socket1[i]);
                 }
-                vector_free(vec);
-                free(vec);
                 exit(EXIT_FAILURE);
             }
 
@@ -385,7 +327,6 @@ int main(int argc , char *argv[]) {
           break;
         }
         printf("Good answer for the player %d !\n\n", curPlayer);
-        //vector_add(vec, buffer);
         bzero(curWord, BUFFSIZE-1);
         strcpy(curWord, "#");
         strcat(curWord, buffer);
@@ -428,18 +369,6 @@ int main(int argc , char *argv[]) {
     }
   }
 
-  //Word chain to send to the clients
-  //Not Working yet
-  // printf("%s\n",WordChain);
-  // printf("%d\n", vector_total(vec));
-  // for (i=0; i < vector_total(vec); i++) {
-  //     bzero(buffer, BUFFSIZE-1);
-  //     strcat(buffer, (char *)vector_get(vec, i));
-  //     printf("%s\n", buffer);
-  //     printf(" ");
-  // }
-  // printf("\n\n");
-
 //Quiting all clients
   for(i = 0; i < MAX_CLIENTS; i++) {
     if(client_socket1[i]->socketfd > 0) {
@@ -451,8 +380,6 @@ int main(int argc , char *argv[]) {
   }
 
   exitSmoothly(readfds, t, address);
-  vector_free(vec);
-  free(vec);
   for(i = 0; i < MAX_CLIENTS; i++) {
     free(client_socket1[i]);
   }

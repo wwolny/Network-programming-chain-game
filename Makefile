@@ -2,24 +2,24 @@ CC=gcc
 CFLAGS=
 RM=rm -rf
 OUT1=server
-OUT2=C
+OUT2=client
 
 all: server client
 
 server: server.o 
-	$(CC) $(CFLAGS) -o $(OUT1) Server-MCH.c
+	$(CC) $(CFLAGS) -o $(OUT1) server.c
 
-client:	SocketsClient.o
-	$(CC) -o ${OUT2} SocketsClient.c
+client: client.o
+	$(CC) -o ${OUT2} client.c
 
 debug: CFLAGS+=-DDEBUG_ON
 debug: build
 
-server.o: Server-MCH.c 
-	$(CC) $(CFLAGS) -c Server-MCH.c
+server.o: server.c 
+	$(CC) $(CFLAGS) -c server.c
 
-SocketsClient.o: SocketsClient.c
-	$(CC) -c SocketsClient.c
+client.o: client.c
+	$(CC) -c client.c
 
 clean:
-	$(RM) *.o $(OUT)
+	$(RM) *.o $(OUT1) $(OUT2)
